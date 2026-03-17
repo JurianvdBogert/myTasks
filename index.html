@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Mijn Taken">
+    <title>Mijn Taken</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>📋 Mijn Taken</h1>
+            <p class="subtitle" id="taskCount">0 taken</p>
+        </header>
+
+        <div class="add-task">
+            <input type="text" id="taskInput" placeholder="Nieuwe taak toevoegen..." maxlength="200" autocomplete="off">
+            <select id="categorySelect">
+                <option value="">Geen categorie</option>
+                <option value="werk">💼 Werk</option>
+                <option value="prive">🏠 Privé</option>
+                <option value="boodschappen">🛒 Boodschappen</option>
+                <option value="gezondheid">💪 Gezondheid</option>
+                <option value="studie">📚 Studie</option>
+            </select>
+            <button id="addBtn" aria-label="Taak toevoegen">+</button>
+        </div>
+
+        <div class="category-filters" id="categoryFilters">
+            <button class="cat-filter-btn active" data-category="all">Alle</button>
+            <button class="cat-filter-btn" data-category="werk">💼 Werk</button>
+            <button class="cat-filter-btn" data-category="prive">🏠 Privé</button>
+            <button class="cat-filter-btn" data-category="boodschappen">🛒 Boodschappen</button>
+            <button class="cat-filter-btn" data-category="gezondheid">💪 Gezondheid</button>
+            <button class="cat-filter-btn" data-category="studie">📚 Studie</button>
+            <button class="cat-filter-btn" data-category="geen">Geen</button>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Alles</button>
+            <button class="filter-btn" data-filter="active">Open</button>
+            <button class="filter-btn" data-filter="completed">Klaar</button>
+        </div>
+
+        <ul id="taskList" class="task-list"></ul>
+
+        <div id="emptyState" class="empty-state">
+            <span class="empty-icon">✨</span>
+            <p>Geen taken! Voeg er een toe.</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
