@@ -14,9 +14,23 @@
 </head>
 <body>
     <div class="app">
+        <div class="auth-bar" id="authBar">
+            <div id="authLoggedOut" class="auth-section">
+                <button id="loginBtn" class="auth-btn">🔑 Inloggen met Google</button>
+            </div>
+            <div id="authLoggedIn" class="auth-section hidden">
+                <div class="user-info">
+                    <img id="userPhoto" class="user-photo" alt="" src="">
+                    <span id="userName" class="user-name"></span>
+                </div>
+                <button id="logoutBtn" class="auth-btn auth-btn-small">Uitloggen</button>
+            </div>
+        </div>
+
         <header>
             <h1>📋 Mijn Taken</h1>
             <p class="subtitle" id="taskCount">0 taken</p>
+            <p class="sync-status" id="syncStatus"></p>
         </header>
 
         <div class="add-task">
@@ -56,6 +70,9 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

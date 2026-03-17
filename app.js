@@ -1,10 +1,27 @@
 (() => {
     'use strict';
 
+    // Firebase config
+    const firebaseConfig = {
+        apiKey: "AIzaSyBJ6XQZrQNkjawOmblaGbdXLlw9FyTlXZc",
+        authDomain: "mytasks-8e57b.firebaseapp.com",
+        projectId: "mytasks-8e57b",
+        storageBucket: "mytasks-8e57b.firebasestorage.app",
+        messagingSenderId: "618817580584",
+        appId: "1:618817580584:web:e89d4a9c65a452023a8f1d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    db.enablePersistence().catch(() => {});
+
     const STORAGE_KEY = 'mijn-taken-data';
     let tasks = [];
     let currentFilter = 'all';
     let currentCategory = 'all';
+    let currentUser = null;
+    let unsubFirestore = null;
 
     const CATEGORIES = {
         'werk': '💼 Werk',
@@ -22,8 +39,98 @@
     const emptyState = document.getElementById('emptyState');
     const filterBtns = document.querySelectorAll('.filter-btn');
     const catFilterBtns = document.querySelectorAll('.cat-filter-btn');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const authLoggedIn = document.getElementById('authLoggedIn');
+    const authLoggedOut = document.getElementById('authLoggedOut');
+    const userPhoto = document.getElementById('userPhoto');
+    const userName = document.getElementById('userName');
+    const syncStatus = document.getElementById('syncStatus');
 
-    function loadTasks() {
+    // --- Auth ---
+    function updateAuthUI(user) {
+        if (user) {
+            authLoggedIn.classList.remove('hidden');
+            authLoggedOut.classList.add('hidden');
+            userPhoto.src = user.photoURL || '';
+            userName.textContent = user.displayName || user.email;
+            syncStatus.textContent = '☁️ Gesynchroniseerd';
+        } else {
+            authLoggedIn.classList.add('hidden');
+            authLoggedOut.classList.remove('hidden');
+            syncStatus.textContent = '📱 Alleen lokaal';
+        }
+    }
+
+    loginBtn.addEventListener('click', () => {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => {
+            if (err.code === 'auth/popup-blocked') {
+                auth.signInWithRedirect(provider);
+            }
+        });
+    });
+
+    logoutBtn.addEventListener('click', () => {
+        auth.signOut();
+    });
+
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        updateAuthUI(user);
+
+        if (unsubFirestore) {
+            unsubFirestore();
+            unsubFirestore = null;
+        }
+
+        if (user) {
+            subscribeFirestore(user.uid);
+        } else {
+            loadTasksLocal();
+            render();
+        }
+    });
+
+    // --- Firestore sync ---
+    function userTasksRef(uid) {
+        return db.collection('users').doc(uid).collection('tasks');
+    }
+
+    function subscribeFirestore(uid) {
+        syncStatus.textContent = '🔄 Synchroniseren...';
+        unsubFirestore = userTasksRef(uid)
+            .orderBy('createdAt', 'desc')
+            .onSnapshot(snapshot => {
+                tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                saveTasksLocal();
+                syncStatus.textContent = '☁️ Gesynchroniseerd';
+                render();
+            }, () => {
+                syncStatus.textContent = '⚠️ Offline modus';
+                loadTasksLocal();
+                render();
+            });
+    }
+
+    async function addTaskToFirestore(task) {
+        if (!currentUser) return;
+        const { id, ...data } = task;
+        await userTasksRef(currentUser.uid).doc(id).set(data);
+    }
+
+    async function updateTaskInFirestore(id, updates) {
+        if (!currentUser) return;
+        await userTasksRef(currentUser.uid).doc(id).update(updates);
+    }
+
+    async function deleteTaskFromFirestore(id) {
+        if (!currentUser) return;
+        await userTasksRef(currentUser.uid).doc(id).delete();
+    }
+
+    // --- Local storage ---
+    function loadTasksLocal() {
         try {
             const data = localStorage.getItem(STORAGE_KEY);
             tasks = data ? JSON.parse(data) : [];
@@ -32,10 +139,11 @@
         }
     }
 
-    function saveTasks() {
+    function saveTasksLocal() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
     }
 
+    // --- Task operations ---
     function generateId() {
         return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     }
@@ -44,17 +152,23 @@
         const text = taskInput.value.trim();
         if (!text) return;
 
-        tasks.unshift({
+        const task = {
             id: generateId(),
             text: text,
             category: categorySelect.value || '',
             done: false,
             createdAt: Date.now()
-        });
+        };
 
+        tasks.unshift(task);
         taskInput.value = '';
         categorySelect.value = '';
-        saveTasks();
+
+        if (currentUser) {
+            addTaskToFirestore(task);
+        } else {
+            saveTasksLocal();
+        }
         render();
         taskInput.focus();
     }
@@ -63,7 +177,11 @@
         const task = tasks.find(t => t.id === id);
         if (task) {
             task.done = !task.done;
-            saveTasks();
+            if (currentUser) {
+                updateTaskInFirestore(id, { done: task.done });
+            } else {
+                saveTasksLocal();
+            }
             render();
         }
     }
@@ -74,12 +192,17 @@
             item.classList.add('removing');
             setTimeout(() => {
                 tasks = tasks.filter(t => t.id !== id);
-                saveTasks();
+                if (currentUser) {
+                    deleteTaskFromFirestore(id);
+                } else {
+                    saveTasksLocal();
+                }
                 render();
             }, 300);
         }
     }
 
+    // --- Filtering & rendering ---
     function getFilteredTasks() {
         let filtered = tasks;
         switch (currentFilter) {
@@ -132,7 +255,7 @@
         }[c]));
     }
 
-    // Event listeners
+    // --- Event listeners ---
     addBtn.addEventListener('click', addTask);
 
     taskInput.addEventListener('keydown', (e) => {
@@ -185,7 +308,7 @@
         navigator.serviceWorker.register('sw.js');
     }
 
-    // Init
-    loadTasks();
+    // Init (auth listener handles loading)
+    loadTasksLocal();
     render();
 })();
